@@ -1,0 +1,27 @@
+A 'States' table:
+	run id (foreign)
+	packed state (primary)
+	loop id (foreign) - optional, indicates if a step belongs to a loop, and if so, which one
+
+A 'Runs' table:
+	run id (primary)
+	
+A 'Merger' table:
+	
+
+
+
+
+During a run, check table to see if current state is already in table
+	if not, add to States table
+	if it is, add to 
+                             
+                              
+                            
+          R  R R                
+           \ |/                  
+         R--\|    R R         
+             \    |/             
+              |<-|/              
+              |  |               
+              |->|                 
