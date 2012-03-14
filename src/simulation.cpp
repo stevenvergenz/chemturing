@@ -5,7 +5,6 @@ Simulation::Simulation()
 	initial = new State();
 	initial->mode = State::SYN;
 	initial->mem = 1;
-	initial->progPtr = 0;
 	initial->dataPtr = 18;
 	int array[20] = {1,1,0,0,1,0,0,1,1,0,1,0,0,1,0,0,1,1,1,1};
 	for(int i=0; i<20; i++)

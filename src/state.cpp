@@ -5,7 +5,7 @@
  */
 
 State::State()
- : mode(RPL), prep(0), mem(0), progPtr(0), dataPtr(0), next(NULL), prev(NULL)
+ : mode(RPL), prep(0), mem(0), progPtrOffset(0), dataPtr(0), next(NULL), prev(NULL)
 {
 	for(int i=0; i<NUM_BITS; i++)
 		bit[i] = 0;
@@ -17,10 +17,17 @@ State::State( ull packed )
 	unpack( packed );
 }
 
-State::State( State* other )
+State::State( State* other, int offset )
  : next(NULL), prev(NULL)
 {
-	unpack( other->pack() );
+	mode = other->mode;
+	prep = other->prep;
+	mem = other->mem;
+	dataPtr = (other->dataPtr - offset + NUM_BITS) % NUM_BITS;
+	progPtrOffset = (other->progPtrOffset + offset) % NUM_BITS;
+	for( int i=0; i<NUM_BITS; i++ ){
+		bit[i] = other->bit[ (i+offset)%NUM_BITS ];
+	}
 }
 
 /*
@@ -33,13 +40,7 @@ bool operator==(State a, State b){
 
 bool State::equals(State* b)
 {
-	ull other = b->pack();
-
-	for(int i=0; i<NUM_BITS; i++){
-		if( packedRot[i] == other ) return true;
-	}
-
-	return false;
+	return pack() == b->pack();
 }
 
 /*
@@ -47,16 +48,14 @@ bool State::equals(State* b)
  * Bit 0: mode
  * Bit 1: prep
  * Bit 2: mem
- * Bits 3-7: progPtr
- * Bits 8-12: dataPtr
- * Bits 13- : bits
+ * Bits 3-7: dataPtr
+ * Bits 8-28 : bits, w/ progPtr at bit 0
  */
 ull State::pack()
 {
 	ull packed = mode&1;
 	packed <<= 1; packed |= (prep&1);
 	packed <<= 1; packed |= (mem&1);
-	packed <<= 5; packed |= (progPtr&0x1f);
 	packed <<= 5; packed |= (dataPtr&0x1f);
 	for(int i=0; i<NUM_BITS; i++){
 		packed <<= 1; packed |= (bit[i]&1);
@@ -71,46 +70,32 @@ void State::unpack(ull val)
 		bit[i] = val&1; val >>= 1;
 	}
 	dataPtr = val&0x1f; val >>= 5;
-	progPtr = val&0x1f; val >>= 5;
 	mem = val&1; val >>= 1;
 	prep = val&1; val >>= 1;
 	mode = val&1;
 }
-
-void State::packRots()
-{
-	// perform rotations
-	for( int i=0; i<NUM_BITS; i++ )
-	{
-		// save current rotation
-		packedRot[i] = pack();
-
-		// rotate bitfield one to the right
-		progPtr = (progPtr+1) % NUM_BITS;
-		dataPtr = (dataPtr+1) % NUM_BITS;
-		Bit temp = bit[NUM_BITS-1];
-		for( int j=NUM_BITS-1; j>0; j-- ){
-			bit[j] = bit[j-1];
-		}
-		bit[0] = temp;
-	}
-}
-
 
 /*
  * Calculate the next step, and add to linked list
  */
 State* State::calcNextState()
 {
-	// prepare new state for returning
-	State* next = new State(this);
-
 	// pack state bits into a switchable int
 	unsigned int varyState = 0;
 	varyState |= mode; varyState <<= 1;
 	varyState |= prep; varyState <<= 1;
-	varyState |= bit[progPtr]; varyState <<= 1;
-	varyState |= bit[(progPtr+1)%NUM_BITS];
+	varyState |= bit[0]; varyState <<= 1;
+	varyState |= bit[1];
+
+	// prepare new state for returning
+	State* following;
+	if( varyState == 0 || varyState == 4 )
+		following = new State(this, 2*MULT_SKIP);
+	else
+		following = new State(this, 2);
+
+	// pre-operation global items of business
+	following->prep = 0;
 
 	// handle different modes on a case-by-case basis
 	switch( varyState ){
@@ -118,68 +103,50 @@ State* State::calcNextState()
 	// multi-scroll
 	case 0: case 4:
 		note = "MULT";
-		next->progPtr = (next->progPtr+2*MULT_SKIP)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1*MULT_SKIP)%NUM_BITS;
-		next->prep = 0;
+		following->dataPtr = (following->dataPtr+MULT_SKIP-1)%NUM_BITS;
 		break;
 
 	// scroll
 	case 1: case 5:
 		note = "SCROLL";
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
-		next->prep = 0;
 		break;
 
 	// read
 	case 2:
-		next->mem = next->bit[ next->dataPtr ];
+		following->mem = following->bit[ following->dataPtr ];
 	case 11:
 		note = varyState==2?"READ":"Product3";
-		next->prep = 1;
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
+		following->prep = 1;
 		break;
 
 	// write
 	case 3: case 7:
 		note = "WRITE";
-		next->bit[dataPtr] = next->mem;
-		next->prep = 0;
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
+		following->bit[following->dataPtr] = following->mem;
 		break;
 
 	// to SYN
 	case 6:
 		note = "TO SYN";
-		next->mode = SYN;
-		next->prep = 0;
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
+		following->mode = SYN;
 		break;
 
 	// to RPL
 	case 15:
 		note = "TO RPL";
-		next->mode = RPL;
-		next->prep = 0;
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
+		following->mode = RPL;
 		break;
 
 	// products and whatnot
 	default:
 		note = "Product"+QString::number(varyState-8);
-		next->prep = 0;
-		next->progPtr = (next->progPtr+2)%NUM_BITS;
-		next->dataPtr = (next->dataPtr+1)%NUM_BITS;
 		break;
 	};
 
-	next->packRots();
+	// post-operation global items of business
+	following->dataPtr = (following->dataPtr+1)%NUM_BITS;
 
-	return next;
+	return following;
 }
 
 QString State::toString(QString format)
@@ -188,11 +155,11 @@ QString State::toString(QString format)
 	QString bits;
 
 	// print bit field
-	for(int i=0; i<NUM_BITS; i++){
-		if( i==progPtr )
+	for(int i=-(progPtrOffset); i<NUM_BITS-progPtrOffset; i++){
+		if( i==0 )
 			bits += progsym;
-		bits += QString::number(bit[i]);
-		if( i==dataPtr )
+		bits += QString::number(bit[(i+NUM_BITS)%NUM_BITS]);
+		if( (i+NUM_BITS)%NUM_BITS == dataPtr )
 			bits += datasym;
 	}
 

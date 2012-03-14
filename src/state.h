@@ -16,21 +16,21 @@
 
 // bool would work just as well, same size, but char has int operators
 typedef unsigned char Bit;
-// guaranteed 64 bits
-typedef unsigned long long ull;
+// guaranteed 32 bits
+typedef unsigned long ull;
 
 using namespace std;
 
 struct State
 {
-	typedef enum {RPL=0, SYN=1} Mode;
+	enum {RPL=0, SYN=1};
 
 	// state information
 	Bit bit[NUM_BITS];
-	Mode mode;
+	int mode;
 	Bit prep;
 	Bit mem;
-	unsigned char progPtr;
+	unsigned char progPtrOffset;
 	unsigned char dataPtr;
 	QString note;
 
@@ -41,13 +41,12 @@ struct State
 	// constructors
 	State();
 	State( ull packed );
-	State( State* other );
+	// "offset" indicates a rotation to the lef:
+	State( State* other, int offset );
 
 	// packing data
 	ull pack();
 	void unpack(ull val);
-	void packRots();
-	ull packedRot[NUM_BITS];
 
 	// calculation
 	State* calcNextState();
