@@ -5,6 +5,7 @@ namespace Dispatcher {
 // private variables
 unsigned long stateSeed;
 int dataPointer;
+QMutex mutex;
 
 void init()
 {
@@ -44,8 +45,13 @@ State* genRandomState()
 
 State* genSequentialState()
 {
+	if( stateSeed > 1<<(NUM_BITS+3) ){
+		return NULL;
+	}
+
 	unsigned long seed = stateSeed;
 	State* s = new State();
+	QMutexLocker lock(&mutex);
 
 	// populate new state with contents of seed
 	s->mem = seed&1;  seed >>=1;
@@ -61,9 +67,6 @@ State* genSequentialState()
 	dataPointer = (dataPointer+1) % NUM_BITS;
 	if( dataPointer == 0 ){
 		stateSeed++;
-	}
-	if( stateSeed > 1<<(NUM_BITS+3) ){
-		return NULL;
 	}
 
 	return s;

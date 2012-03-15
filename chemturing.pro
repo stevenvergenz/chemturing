@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core
+QT       += core sql
 
 QT       -= gui
 
@@ -19,9 +19,11 @@ TEMPLATE = app
 SOURCES += src/main.cpp \
 	src/state.cpp \
 	src/simulation.cpp \
-	src/dispatcher.cpp
+	src/dispatcher.cpp \
+	src/dbmanager.cpp
 
 HEADERS += src/state.h \
 	src/simulation.h \
-	src/dispatcher.h
+	src/dispatcher.h \
+	src/dbmanager.h
 

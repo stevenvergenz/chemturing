@@ -2,6 +2,8 @@
 #define __DISPATCHER_H
 
 #include <ctime>
+#include <QMutex>
+#include <QMutexLocker>
 
 #include "state.h"
 

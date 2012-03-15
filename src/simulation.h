@@ -10,7 +10,7 @@ class Simulation : public QThread
 {
 private:
 	State* initial;
-
+	
 public:
 	Simulation( State* s );
 	~Simulation();
