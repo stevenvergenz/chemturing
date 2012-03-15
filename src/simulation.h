@@ -2,16 +2,17 @@
 #define __SIMULATION_H
 
 #include <QTextStream>
+#include <QThread>
 
 #include "state.h"
 
-class Simulation
+class Simulation : public QThread
 {
 private:
 	State* initial;
 
 public:
-	Simulation();
+	Simulation( State* s );
 	~Simulation();
 	void run();
 	void print(FILE* fio = stdout);

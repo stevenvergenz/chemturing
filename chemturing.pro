@@ -11,15 +11,17 @@ QT       -= gui
 TARGET = chemturing
 CONFIG   += console
 CONFIG   -= app_bundle
-QMAKE_CXXFLAGS += -fpermissive
+#QMAKE_CXXFLAGS += -fpermissive
 
 TEMPLATE = app
 
 
 SOURCES += src/main.cpp \
 	src/state.cpp \
-	src/simulation.cpp
+	src/simulation.cpp \
+	src/dispatcher.cpp
 
 HEADERS += src/state.h \
-	src/simulation.h
+	src/simulation.h \
+	src/dispatcher.h
 
