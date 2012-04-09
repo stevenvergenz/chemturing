@@ -1,13 +1,8 @@
 #include "dispatcher.h"
 
-namespace Dispatcher {
 
-// private variables
-unsigned long stateSeed;
-int dataPointer;
-QMutex mutex;
-
-void init()
+Dispatcher::Dispatcher()
+: stateSeed(0), dataPointer(0)
 {
 	// make sure the generator is random enough
 	if( RAND_MAX < (1<<NUM_BITS) ){
@@ -15,15 +10,24 @@ void init()
 		return;
 	}
 
-	// initialize sequential parameters
-	stateSeed = 0;
-	dataPointer = 0;
-
 	// seed random numbers
 	qsrand( time(0) );
+	
+	// initialize database, if it doesn't exist
+	if( !DBManager::prepareDatabase("localhost", "ChemTuring", "ctuser", "T)^x83$PFhsS:1i") ){
+		qCritical("Could not verify database!");
+	}
+	
+	// queue cleanup event
+	connect( QCoreApplication::instance(), SIGNAL(aboutToQuit()), this, SLOT(cleanUp()) );
 }
 
-State* genRandomState()
+void Dispatcher::startCalculation()
+{
+
+}
+
+State* Dispatcher::genRandomState()
 {
 	State* s = new State();
 
@@ -43,7 +47,7 @@ State* genRandomState()
 	return s;
 }
 
-State* genSequentialState()
+State* Dispatcher::genSequentialState()
 {
 	if( stateSeed > 1<<(NUM_BITS+3) ){
 		return NULL;
@@ -72,5 +76,7 @@ State* genSequentialState()
 	return s;
 }
 
+void Dispatcher::cleanUp()
+{
 
-} // end namespace Dispatcher
+}

@@ -2,8 +2,13 @@
 
 namespace DBManager
 {
+QSqlDatabase db;
 
 
+/*******************************************************************
+  Ensures that all tables exist and are properly formatted.
+  Fails otherwise.
+*******************************************************************/
 bool prepareDatabase(QString host, QString dbname, QString user, QString password)
 {
 	db = QSqlDatabase::addDatabase("QMYSQL");
@@ -13,42 +18,70 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	db.setPassword(password);
 
 	if( !db.open() ){
-		qCritical("Could not open database");
+		qCritical() << "Could not open database";
 		return false;
 	}
 
-	QSqlQuery query;
 
-	// create the "states" table to contain the discrete states
-	query.prepare("CREATE TABLE IF NOT EXISTS states ("
-		"state_def INT UNSIGNED, "
-		"stepnum SMALLINT UNSIGNED, "
-		"run_id INT UNSIGNED NOT NULL, "
-		"loop_id INT, "
-		"PRIMARY KEY (state_def), "
-		"FOREIGN KEY (run_id) REFERENCES runs, "
-		"FOREIGN KEY (loop_id) REFERENCES loops"
-	") ENGINE=InnoDB;" );
-
-	query.prepare("CREATE TABLE IF NOT EXISTS merges ("
+	/*QString createMerges = 
+		"CREATE TABLE IF NOT EXISTS merges ("
 		"merge_id INT UNSIGNED, "
 		"run_id INT UNSIGNED, "
 		"merge_point INT UNSIGNED, "
-	");");
+		");";
+	*/
 
-	query.prepare("CREATE TABLE IF NOT EXISTS loops ("
-		
-	");");
-
-	query.prepare("CREATE TABLE IF NOT EXISTS runs ("
-		"run_id INT UNSIGNED, "
+	QString createLoops = 
+		"CREATE TABLE IF NOT EXISTS loops ("
+		"loop_id INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
-		"term_type ENUM(merge, loop), "
-		"term_id INT UNSIGNED, "
+		"instance_cnt INT UNSIGNED, "
+		"exec_pct FLOAT, "
+		"rewrite_pct FLOAT, "
+		"PRIMARY KEY (loop_id)"
+		");";
+
+	QString createRuns = 
+		"CREATE TABLE IF NOT EXISTS runs ("
+		"run_id INT UNSIGNED NOT NULL, "
+		"final_state INT UNSIGNED NOT NULL, "
+		"length INT UNSIGNED, "
+		"term_loop_id INT UNSIGNED, "
 		"exec_pct FLOAT, "
 		"rewrite_pct FLOAT, "
 		"PRIMARY KEY (run_id)"
-	");");
+		");";
+
+	// create the "states" table to contain the discrete states
+	QString createStates = 
+		"CREATE TABLE IF NOT EXISTS states ("
+		"state_def INT UNSIGNED, "
+		"stepnum SMALLINT UNSIGNED, "
+		"run_id INT UNSIGNED NOT NULL, "
+		"loop_id INT UNSIGNED, "
+		"PRIMARY KEY (state_def), "
+		"FOREIGN KEY (run_id) REFERENCES runs, "
+		"FOREIGN KEY (loop_id) REFERENCES loops"
+		") ENGINE=InnoDB;";
+		
+		
+	// create tables
+	QSqlQuery query;
+	if( !query.exec(createStates) || !query.exec(createLoops) || !query.exec(createRuns) ){
+		qCritical() << "Could not verify critical table: " << db.lastError().text();
+		return false;
+	}
+	
+	return true;
+}
+
+
+/*******************************************************************
+  Submits all relevant run information to the run table
+*******************************************************************/
+bool commitRun( Simulation* s )
+{
+	return true;
 }
 
 

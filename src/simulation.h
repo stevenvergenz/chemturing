@@ -2,11 +2,11 @@
 #define __SIMULATION_H
 
 #include <QTextStream>
-#include <QThread>
+#include <QRunnable>
 
 #include "state.h"
 
-class Simulation : public QThread
+class Simulation : public QRunnable
 {
 private:
 	State* initial;
