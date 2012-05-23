@@ -5,7 +5,13 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QCoreApplication>
+#include <QThreadPool>
+#include <QStringList>
+#include <QDebug>
+#include <QMap>
+#include <QDir>
 
+#include "simulation.h"
 #include "state.h"
 #include "dbmanager.h"
 
@@ -14,19 +20,32 @@ class Dispatcher : public QObject
 {
 Q_OBJECT
 public:
-	enum {SEQUENTIAL, RANDOM} Mode;
+	enum GenMode {SEQUENTIAL, RANDOM};
 	
-	Dispatcher();
+	Dispatcher( QMap<QString,QVariant>* options );
+
+signals:
+	void readyToCalculate();
+	void done();
 
 public slots:
 	void startCalculation();
 	void cleanUp();
 	
 private:
-	unsigned long stateSeed;
+	// sequential state information
+	unsigned long stateHash;
 	int dataPointer;
+	
+	QThreadPool threadpool;
 	QMutex mutex;
-
+	
+	// run parameters
+	GenMode mode;
+	int runcount;
+	QDir outputDir;
+	
+	State* genState();
 	State* genRandomState();
 	State* genSequentialState();
 };

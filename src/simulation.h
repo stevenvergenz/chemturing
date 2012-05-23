@@ -1,6 +1,7 @@
 #ifndef __SIMULATION_H
 #define __SIMULATION_H
 
+#include <QFile>
 #include <QTextStream>
 #include <QRunnable>
 
@@ -10,12 +11,16 @@ class Simulation : public QRunnable
 {
 private:
 	State* initial;
+	int loopStep;
+	float execPct;
+	float rewritePct;
+	QString outfile;
 	
 public:
-	Simulation( State* s );
+	Simulation( State* s, QString out );
 	~Simulation();
 	void run();
-	void print(FILE* fio = stdout);
+	void print();
 };
 
 #endif

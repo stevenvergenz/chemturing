@@ -84,5 +84,9 @@ bool commitRun( Simulation* s )
 	return true;
 }
 
+bool testState( State* s )
+{
+	
+}
 
 } // end namespace DBManager

@@ -16,14 +16,15 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += src/main.cpp \
-	src/state.cpp \
-	src/simulation.cpp \
-	src/dispatcher.cpp \
-	src/dbmanager.cpp
+SOURCES += main.cpp \
+	state.cpp \
+	simulation.cpp \
+	dispatcher.cpp \
+	dbmanager.cpp
 
-HEADERS += src/state.h \
-	src/simulation.h \
-	src/dispatcher.h \
-	src/dbmanager.h
+HEADERS += \
+	state.h \
+	simulation.h \
+	dispatcher.h \
+	dbmanager.h
 

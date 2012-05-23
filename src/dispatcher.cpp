@@ -1,31 +1,77 @@
 #include "dispatcher.h"
 
 
-Dispatcher::Dispatcher()
-: stateSeed(0), dataPointer(0)
+Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
+: stateHash(0), dataPointer(0)
 {
 	// make sure the generator is random enough
 	if( RAND_MAX < (1<<NUM_BITS) ){
-		qCritical("Random number generator is not random enough!");
-		return;
+		qFatal("Random number generator is not random enough!");
 	}
 
 	// seed random numbers
 	qsrand( time(0) );
 	
-	// initialize database, if it doesn't exist
-	if( !DBManager::prepareDatabase("localhost", "ChemTuring", "ctuser", "T)^x83$PFhsS:1i") ){
-		qCritical("Could not verify database!");
+	// initialize database if specified and if it doesn't exist
+	// localhost, ChemTuring, ctuser, T)^x83$PFhsS:1i
+	if( options->contains("database") )
+	{
+		QStringList info = options->value("database").toString().split(" ", QString::SkipEmptyParts);
+		qDebug() << "Connecting to database with (" << info << ")";
+		if( ! DBManager::prepareDatabase(info[0], info[1], info[2], info[3]) ){
+			qFatal("Could not verify database!");
+		}
 	}
 	
-	// queue cleanup event
+	// initialize manditory run parameters
+	if( options->value("mode").toString() == "random" ){
+		mode = RANDOM;
+	}
+	else {
+		mode = SEQUENTIAL;
+	}
+	runcount = options->value("count").toInt();
+	threadpool.setMaxThreadCount( options->value("threads").toInt() );
+	outputDir = QDir( options->value("output-dir").toString() );
+	
+	// done setting options, free container
+	delete options;
+	
+	// queue start/end events
+	connect( this, SIGNAL(readyToCalculate()), this, SLOT(startCalculation()) );
 	connect( QCoreApplication::instance(), SIGNAL(aboutToQuit()), this, SLOT(cleanUp()) );
+	connect( this, SIGNAL(done()), QCoreApplication::instance(), SLOT(quit()) );
+	
+	emit readyToCalculate();
 }
+
 
 void Dispatcher::startCalculation()
 {
-
+	int cid;
+	
+	for( cid=0; cid<runcount; cid++ )
+	{
+		State* init = genState();
+		QString file = QString::number( init->pack(), 16 ) + ".txt";
+		Simulation* s = new Simulation( genState(), outputDir.absoluteFilePath(file) );
+		s->setAutoDelete(true);
+		threadpool.start(s);
+	}
+	
+	threadpool.waitForDone();
+	emit done();
 }
+
+
+State* Dispatcher::genState()
+{
+	if( mode == RANDOM )
+		return genRandomState();
+	else
+		return genSequentialState();
+}
+
 
 State* Dispatcher::genRandomState()
 {
@@ -47,13 +93,14 @@ State* Dispatcher::genRandomState()
 	return s;
 }
 
+
 State* Dispatcher::genSequentialState()
 {
-	if( stateSeed > 1<<(NUM_BITS+3) ){
+	if( stateHash > 1<<(NUM_BITS+3) ){
 		return NULL;
 	}
 
-	unsigned long seed = stateSeed;
+	unsigned long seed = stateHash;
 	State* s = new State();
 	QMutexLocker lock(&mutex);
 
@@ -70,7 +117,7 @@ State* Dispatcher::genSequentialState()
 	// increment seed values
 	dataPointer = (dataPointer+1) % NUM_BITS;
 	if( dataPointer == 0 ){
-		stateSeed++;
+		stateHash++;
 	}
 
 	return s;

@@ -1,6 +1,6 @@
 #include "simulation.h"
 
-Simulation::Simulation( State* s ) : initial(s)
+Simulation::Simulation( State* s, QString out ) : initial(s), outfile(out)
 {
 
 	/*initial = new State();
@@ -13,6 +13,7 @@ Simulation::Simulation( State* s ) : initial(s)
 	*/
 }
 
+
 Simulation::~Simulation()
 {
 	State* cur = initial;
@@ -22,6 +23,7 @@ Simulation::~Simulation()
 		cur = temp;
 	}
 }
+
 
 void Simulation::run()
 {
@@ -52,13 +54,20 @@ void Simulation::run()
 		cur = cur->next;
 	}
 
-	// calculate simulation properties: mode cycling, dynamism
+	// calculate simulation properties: mode cycling, dynamism, etc.
+	
+
+	// commit new run to the database and/or file
 	print();
 }
 
-void Simulation::print(FILE* fio)
+
+void Simulation::print()
 {
-	QTextStream qout(fio);
+	QFile f(outfile);
+	f.open(QIODevice::WriteOnly);
+	QTextStream qout( &f );
+	
 	qout << "Step Bits (prog=\\ data=/)    Mode Mem Command" << endl;
 	State* cur = initial;
 	int stepcount = 0;
@@ -67,5 +76,7 @@ void Simulation::print(FILE* fio)
 			<< cur->toString("%1  %2  %3   %4") << endl;
 		cur = cur->next;
 	}
+	
+	f.close();
 }
 
