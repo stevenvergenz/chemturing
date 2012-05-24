@@ -34,9 +34,6 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 	threadpool.setMaxThreadCount( options->value("threads").toInt() );
 	outputDir = QDir( options->value("output-dir").toString() );
 	
-	// done setting options, free container
-	delete options;
-	
 	// queue start/end events
 	connect( this, SIGNAL(readyToCalculate()), this, SLOT(startCalculation()) );
 	connect( QCoreApplication::instance(), SIGNAL(aboutToQuit()), this, SLOT(cleanUp()) );
@@ -53,7 +50,7 @@ void Dispatcher::startCalculation()
 	for( cid=0; cid<runcount; cid++ )
 	{
 		State* init = genState();
-		QString file = QString::number( init->pack(), 16 ) + ".txt";
+		QString file = QString::number( init->pack(), 16 ).rightJustified(7, '0') + ".txt";
 		Simulation* s = new Simulation( genState(), outputDir.absoluteFilePath(file) );
 		s->setAutoDelete(true);
 		threadpool.start(s);
@@ -61,6 +58,7 @@ void Dispatcher::startCalculation()
 	
 	threadpool.waitForDone();
 	emit done();
+	exit(0);
 }
 
 

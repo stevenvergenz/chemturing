@@ -17,7 +17,7 @@ void printUsage()
 		<< "  chemecher [--help] [--mode <mode>] [--count <c>] [--threads <tc>]" << endl
 		<< "      [--file-path <dir>] [--database <host> <db> <user> <pass>]" << endl
 		<< "Arguments:" << endl
-		<< "  --help       : Print this usage information." << endl
+		<< "  --help       : Print this usage information and exit." << endl
 		<< "  --mode       : Sets state generation mode. RANDOM or SEQUENCE valid. Defaults to RANDOM." << endl
 		<< "  --count      : Sets the number of simulations to run. Defaults to 1." << endl
 		<< "  --threads    : Sets the number of worker threads. Defaults to 1." << endl
@@ -150,6 +150,8 @@ int main(int argc, char** argv)
 	}
 	
 	Dispatcher dispatch(options);
+	
+	delete options;
 	
 	return a.exec();
 }
