@@ -43,12 +43,12 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 
 	QString createSimulations = 
 		"CREATE TABLE IF NOT EXISTS simulations ("
-		"emu_id INT UNSIGNED NOT NULL, "
+		"sim_id INT UNSIGNED NOT NULL, "
 		"final_state INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"term_loop_id INT UNSIGNED, "
 			
-		"PRIMARY KEY (run_id)"
+		"PRIMARY KEY (sim_id)"
 		") ENGINE=InnoDB;";
 
 	// create the "states" table to contain the discrete states
