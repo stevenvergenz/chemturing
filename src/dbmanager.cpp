@@ -36,10 +36,8 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 		"loop_id INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"instance_cnt INT UNSIGNED, "
-		"exec_pct FLOAT, "
-		"rewrite_pct FLOAT, "
 		"PRIMARY KEY (loop_id)"
-		");";
+		") ENGINE=InnoDB;";
 
 	QString createRuns = 
 		"CREATE TABLE IF NOT EXISTS runs ("
@@ -47,10 +45,8 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 		"final_state INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"term_loop_id INT UNSIGNED, "
-		"exec_pct FLOAT, "
-		"rewrite_pct FLOAT, "
 		"PRIMARY KEY (run_id)"
-		");";
+		") ENGINE=InnoDB;";
 
 	// create the "states" table to contain the discrete states
 	QString createStates = 
