@@ -17,6 +17,7 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	db.setUserName(user);
 	db.setPassword(password);
 
+	// make sure the database exists and the credentials are good
 	if( !db.open() ){
 		qCritical() << "Could not open database";
 		return false;
@@ -36,15 +37,17 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 		"loop_id INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"instance_cnt INT UNSIGNED, "
+			
 		"PRIMARY KEY (loop_id)"
 		") ENGINE=InnoDB;";
 
-	QString createRuns = 
-		"CREATE TABLE IF NOT EXISTS runs ("
-		"run_id INT UNSIGNED NOT NULL, "
+	QString createSimulations = 
+		"CREATE TABLE IF NOT EXISTS simulations ("
+		"emu_id INT UNSIGNED NOT NULL, "
 		"final_state INT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"term_loop_id INT UNSIGNED, "
+			
 		"PRIMARY KEY (run_id)"
 		") ENGINE=InnoDB;";
 
@@ -54,18 +57,50 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 		"state_def INT UNSIGNED, "
 		"next_state INT UNSIGNED, "
 		"stepnum SMALLINT UNSIGNED, "
-		"run_id INT UNSIGNED NOT NULL, "
+		"sim_id INT UNSIGNED NOT NULL, "
 		"loop_id INT UNSIGNED, "
+			
 		"PRIMARY KEY (state_def), "
-		"FOREIGN KEY (run_id) REFERENCES runs, "
+		"FOREIGN KEY (sim_id) REFERENCES simulations, "
 		"FOREIGN KEY (loop_id) REFERENCES loops"
 		") ENGINE=InnoDB;";
 		
 		
-	// create tables
+	// ensure that the tables exist (does not guarantee layout)
 	QSqlQuery query;
-	if( !query.exec(createStates) || !query.exec(createLoops) || !query.exec(createRuns) ){
-		qCritical() << "Could not verify critical table: " << db.lastError().text();
+	if( !query.exec(createStates) || !query.exec(createLoops) || !query.exec(createSimulations) ){
+		qCritical() << "Could not create critical table: " << db.lastError().text();
+		return false;
+	}
+	
+	// confirm the layout of the critical tables
+	QSqlRecord table = db.record("loops");
+	if( !table.contains("loop_id")
+			|| !table.contains("length")
+			|| !table.contains("instance_cnt")
+	){
+		qCritical() << "Loop table is of the wrong format!";
+		return false;
+	}
+	
+	table = db.record("simulations");
+	if( !table.contains("sim_id")
+			|| !table.contains("final_state")
+			|| !table.contains("length")
+			|| !table.contains("term_loop_id")
+	){
+		qCritical() << "Simulations table is of the wrong format!";
+		return false;
+	}
+	
+	table = db.record("states");
+	if( !table.contains("state_def")
+			|| !table.contains("next_state")
+			|| !table.contains("stepnum")
+			|| !table.contains("sim_id")
+			|| !table.contains("loop_id")
+	){
+		qCritical() << "State table is of the wrong format!";
 		return false;
 	}
 	
@@ -81,9 +116,5 @@ bool commitRun( Simulation* s )
 	return true;
 }
 
-bool testState( State* s )
-{
-	
-}
 
 } // end namespace DBManager
