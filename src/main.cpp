@@ -14,13 +14,13 @@ void printUsage()
 {
 	cout    << "CHEMTURING v1.0, written by Steven Vergenz" << endl
 		<< "Usage:" << endl
-		<< "  chemecher [--help] [--mode <mode>] [--count <c>] [--threads <tc>]" << endl
+		<< "  chemecher [--help] --mode <mode> [--count <c>] [--threads <tc>]" << endl
 		<< "      [--file-path <dir>] [--database <host> <db> <user> <pass>]" << endl
 		<< "Arguments:" << endl
 		<< "  --help       : Print this usage information and exit." << endl
-		<< "  --mode       : Sets state generation mode. RANDOM or SEQUENCE valid. Defaults to RANDOM." << endl
+		<< "  --mode       : REQUIRED - Sets state generation mode. RANDOM or SEQUENCE valid." << endl
 		<< "  --count      : Sets the number of simulations to run. Defaults to 1." << endl
-		<< "  --threads    : Sets the number of worker threads. Defaults to 1." << endl
+		<< "  --threads    : Sets the number of worker threads. Defaults to the number of processors." << endl
 		<< "  --output-dir : Write simulations to files in the given directory. Defaults to current directory." << endl
 		<< "  --database   : Use the given database for state comparisons." << endl
 		<< endl;
@@ -29,12 +29,18 @@ void printUsage()
 
 QMap<QString,QVariant>* parseArguments( QStringList arglist )
 {
+	// default no-arguments call prints usage
+	if( arglist.size() == 1 ){
+		printUsage();
+		return NULL;
+	}
+	
 	// initialize all arguments to defaults
 	QMap<QString,QVariant> *map = new QMap<QString,QVariant>();
-	map->insert("mode", "random");
+	//map->insert("mode", "random");
 	map->insert("count", 1);
-	map->insert("threads", 1);
-	map->insert("file-path", ".");
+	map->insert("threads", QThread::idealThreadCount());
+	map->insert("output-dir", QDir::current().absolutePath());
 
 	// loop over arguments, populate map
 	QStringList::const_iterator i;
@@ -44,10 +50,10 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 		if( *i == "--mode" )
 		{
 			i++;
-			if( QString::compare( *i, "random", Qt::CaseInsensitive ) ){
+			if( QString::compare( *i, "random", Qt::CaseInsensitive ) == 0 ){
 				(*map)["mode"] = "random";
 			}
-			else if( QString::compare( *i, "sequence", Qt::CaseInsensitive ) ){
+			else if( QString::compare( *i, "sequence", Qt::CaseInsensitive ) == 0 ){
 				(*map)["mode"] = "sequence";
 			}
 			else {
@@ -77,8 +83,7 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 			bool ok;
 			int val = (*i).toInt( &ok );
 			if( !ok ){
-				cout << "Invalid thread count, defaulting to 1." << endl;
-				(*map)["threads"] = 1;
+				cout << "Invalid thread count, defaulting to the number of processors." << endl;
 			}
 			else
 				(*map)["threads"] = val;
@@ -131,7 +136,12 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 		}
 	}
 
-
+	if( !map->contains("mode") ){
+		cout << "The --mode flag is NOT optional. Please specify a state generation mode." << endl;
+		delete map;
+		return NULL;
+	}
+	
 	return map;
 }
 
