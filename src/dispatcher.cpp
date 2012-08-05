@@ -51,7 +51,7 @@ void Dispatcher::startCalculation()
 	{
 		State* init = genState();
 		QString file = QString::number( init->pack(), 16 ).rightJustified(7, '0') + ".txt";
-		Simulation* s = new Simulation( genState(), outputDir.absoluteFilePath(file) );
+		Simulation* s = new Simulation( init, outputDir.absoluteFilePath(file) );
 		s->setAutoDelete(true);
 		threadpool.start(s);
 	}
