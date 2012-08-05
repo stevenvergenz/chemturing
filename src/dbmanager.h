@@ -15,6 +15,7 @@ namespace DBManager
 {
 	bool prepareDatabase(QString host, QString dbname, QString user, QString password);
 	bool commitRun( Simulation* s );
+	bool testState( State* s );
 }
 
 #endif
