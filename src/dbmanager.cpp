@@ -52,6 +52,7 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	QString createStates = 
 		"CREATE TABLE IF NOT EXISTS states ("
 		"state_def INT UNSIGNED, "
+		"next_state INT UNSIGNED, "
 		"stepnum SMALLINT UNSIGNED, "
 		"run_id INT UNSIGNED NOT NULL, "
 		"loop_id INT UNSIGNED, "
