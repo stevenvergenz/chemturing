@@ -80,3 +80,7 @@ void Simulation::print()
 	f.close();
 }
 
+State* Simulation::getStates()
+{
+	return initial;
+}

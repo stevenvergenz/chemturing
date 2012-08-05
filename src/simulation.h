@@ -21,6 +21,7 @@ public:
 	~Simulation();
 	void run();
 	void print();
+	State* getStates();
 };
 
 #endif
