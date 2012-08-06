@@ -2,7 +2,12 @@
 
 namespace DBManager
 {
-QSqlDatabase db;
+struct DBInfo {
+	QString host;
+	QString dbname;
+	QString user;
+	QString password;
+} dbInfo;
 
 
 /*******************************************************************
@@ -76,8 +81,8 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	// confirm the layout of the critical tables
 	QSqlRecord table = db.record("loops");
 	if( !table.contains("loop_id")
-			|| !table.contains("length")
-			|| !table.contains("instance_cnt")
+		|| !table.contains("length")
+		|| !table.contains("instance_cnt")
 	){
 		qCritical() << "Loop table is of the wrong format!";
 		return false;
@@ -85,9 +90,9 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	
 	table = db.record("simulations");
 	if( !table.contains("sim_id")
-			|| !table.contains("final_state")
-			|| !table.contains("length")
-			|| !table.contains("term_loop_id")
+		|| !table.contains("final_state")
+		|| !table.contains("length")
+		|| !table.contains("term_loop_id")
 	){
 		qCritical() << "Simulations table is of the wrong format!";
 		return false;
@@ -95,15 +100,17 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 	
 	table = db.record("states");
 	if( !table.contains("state_def")
-			|| !table.contains("next_state")
-			|| !table.contains("stepnum")
-			|| !table.contains("sim_id")
-			|| !table.contains("loop_id")
+		|| !table.contains("next_state")
+		|| !table.contains("stepnum")
+		|| !table.contains("sim_id")
+		|| !table.contains("loop_id")
 	){
 		qCritical() << "State table is of the wrong format!";
 		return false;
 	}
 	
+	db.close();
+
 	return true;
 }
 
@@ -111,8 +118,27 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 /*******************************************************************
   Submits all relevant run information to the run table
 *******************************************************************/
-bool commitRun( Simulation* s )
+bool commitSimulation( Simulation* s )
 {
+	QSqlQuery query;
+	State* state = s->getStates();
+
+	// check to see if the sim's initial state has already been run
+	query.prepare("SELECT COUNT(state_def) FROM states WHERE state_def=:id;");
+	query.bindValue( ":id", state->pack() );
+	if( !query.exec() ){
+		qCritical() << "Cannot query state table!" << endl;
+		return false;
+	}
+
+	// consider the commit done if the initial state has already been tested
+	query.first();
+	if( query.record().value(0).toInt() != 0 ){
+		return true;
+	}
+
+	// otherwise
+
 	return true;
 }
 
