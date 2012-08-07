@@ -17,8 +17,14 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 	if( options->contains("database") )
 	{
 		QStringList info = options->value("database").toString().split(" ", QString::SkipEmptyParts);
+		DB::ConnectionInfo cnxInfo;
+		cnxInfo.host     = info[0];
+		cnxInfo.dbname   = info[1];
+		cnxInfo.user     = info[2];
+		cnxInfo.password = info[3];
+
 		qDebug() << "Connecting to database with (" << info << ")";
-		if( ! DBManager::prepareDatabase(info[0], info[1], info[2], info[3]) ){
+		if( ! DB::prepareDatabase(cnxInfo) ){
 			qFatal("Could not verify database!");
 		}
 	}

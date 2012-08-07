@@ -9,9 +9,16 @@
 
 #include "simulation.h"
 
-namespace DBManager
+namespace DB
 {
-	bool prepareDatabase(QString host, QString dbname, QString user, QString password);
+	struct ConnectionInfo {
+		QString host;
+		QString dbname;
+		QString user;
+		QString password;
+	} connectionInfo;
+
+	bool prepareDatabase( ConnectionInfo xInfo );
 	bool commitSimulation( Simulation* s );
 }
 

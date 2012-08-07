@@ -1,26 +1,22 @@
 #include "dbmanager.h"
 
-namespace DBManager
+namespace DB
 {
-struct DBInfo {
-	QString host;
-	QString dbname;
-	QString user;
-	QString password;
-} dbInfo;
 
 
 /*******************************************************************
   Ensures that all tables exist and are properly formatted.
   Fails otherwise.
 *******************************************************************/
-bool prepareDatabase(QString host, QString dbname, QString user, QString password)
+bool prepareDatabase( ConnectionInfo xInfo )
 {
+	DB::connectionInfo = xInfo;
+
 	db = QSqlDatabase::addDatabase("QMYSQL");
-	db.setHostName(host);
-	db.setDatabaseName(dbname);
-	db.setUserName(user);
-	db.setPassword(password);
+	db.setHostName(xInfo.host);
+	db.setDatabaseName(xInfo.dbname);
+	db.setUserName(xInfo.user);
+	db.setPassword(xInfo.password);
 
 	// make sure the database exists and the credentials are good
 	if( !db.open() ){
@@ -120,7 +116,25 @@ bool prepareDatabase(QString host, QString dbname, QString user, QString passwor
 *******************************************************************/
 bool commitSimulation( Simulation* s )
 {
-	QSqlQuery query;
+	// set up thread-dependent db connection
+	QThreadStorage<QSqlDatabase*> storage;
+	QSqlDatabase* db;
+	if( !storage.hasLocalData() ){
+		db = new QSqlDatabase();
+		storage.setLocalData(db);
+		*db = QSqlDatabase::cloneDatabase(DB::db, QThread::currentThreadId());
+
+		// make sure the database exists and the credentials are good
+		if( !db->open() ){
+			qCritical() << "Could not open threaded database" << endl;
+			return false;
+		}
+	}
+	else {
+		db = storage.localData();
+	}
+
+	QSqlQuery query(*db);
 	State* state = s->getStates();
 
 	// check to see if the sim's initial state has already been run
