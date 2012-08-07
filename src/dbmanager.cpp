@@ -6,6 +6,7 @@ namespace DB
 // namespace variables
 QSqlDatabase db;
 ConnectionInfo connectionInfo;
+QMutex simLock;
 
 /*******************************************************************
   Ensures that all tables exist and are properly formatted.
@@ -48,7 +49,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 	QString createSimulations = 
 		"CREATE TABLE IF NOT EXISTS simulations ("
 		"sim_id BIGINT UNSIGNED NOT NULL, "
-		"final_state BIGINT UNSIGNED NOT NULL, "
+		"final_state BIGINT UNSIGNED, "
 		"length INT UNSIGNED, "
 		"term_loop_id BIGINT UNSIGNED, "
 			
@@ -58,7 +59,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 	// create the "states" table to contain the discrete states
 	QString createStates = 
 		"CREATE TABLE IF NOT EXISTS states ("
-		"state_def BIGINT UNSIGNED, "
+		"state_def BIGINT UNSIGNED NOT NULL, "
 		"next_state BIGINT UNSIGNED, "
 		"stepnum SMALLINT UNSIGNED, "
 		"sim_id BIGINT UNSIGNED NOT NULL, "
@@ -137,24 +138,102 @@ bool commitSimulation( Simulation* s )
 		db = storage.localData();
 	}
 
-	QSqlQuery query(*db);
-	State* state = s->getStates();
+	// prepare queries
+	QSqlQuery testState(*db), addState(*db), addSim(*db), updateSim(*db);
+	testState.prepare("SELECT COUNT(state_def)as count, loop_id, sim_id FROM states "
+		"WHERE state_def=:id;");
+	addState.prepare("INSERT INTO states (state_def, next_state, stepnum, sim_id, loop_id) "
+		"VALUES (:statedef, :nextstate, :stepnum, :simid, :loopid);");
+	addSim.prepare("INSERT INTO simulations (sim_id, length) VALUES (:simid, :length);");
+	updateSim.prepare("UPDATE simulations SET final_state=:final, term_loop_id=:termloopid "
+		"WHERE sim_id=:id;");
 
-	// check to see if the sim's initial state has already been run
-	query.prepare("SELECT COUNT(state_def) FROM states WHERE state_def=:id;");
-	query.bindValue( ":id", QVariant(state->pack()) );
-	if( !query.exec() ){
-		qCritical() << "Cannot query state table!" << endl;
+	State* i;
+	State* initial = s->getInitialState();
+	ull loopFlag = 0;
+
+	// make sure the simulation has been run
+	if( initial == NULL || initial->next == NULL ){
+		qCritical() << "Cannot commit an incomplete simulation" << endl;
 		return false;
 	}
 
-	// consider the commit done if the initial state has already been tested
-	query.first();
-	if( query.record().value(0).toInt() != 0 ){
-		return true;
-	}
+	// lock simulation
+	QMutexLocker locker( &DB::simLock );
 
-	// otherwise
+	// start transaction
+	db->transaction();
+
+	// loop over states
+	for( i = initial; i->next!=NULL; i = i->next )
+	{
+		// check if current state is in the db
+		testState.bindValue( ":id", QVariant(i->pack()) );
+		if( !testState.exec() ){
+			qCritical() << "Cannot query state table!" << endl;
+			db->rollback();
+			return false;
+		}
+		testState.first();
+
+		// if state IS NOT in db
+		if( testState.record().value("count").toInt() == 0 )
+		{
+			// initial state is fresh
+			if( i == initial )
+			{
+				// commit new simulation entry
+				addSim.bindValue(":simid", QVariant(initial->pack()));
+				addSim.bindValue(":length", QVariant(s->getLength()));
+				if( !addSim.exec() ){
+					qCritical() << "Cannot add new simulation to database!" << endl;
+					db->rollback();
+					return false;
+				}
+			}
+
+			// state is the start of the loop
+			if( i == s->getLoopState() )
+			{
+				// set the loop id flag for future commits
+				loopFlag = i->pack();
+
+				// create new entry in the loop table
+
+				// update sim table with term loop id
+			}
+
+			// commit state to db
+		}
+
+		// state IS in db
+		else
+		{
+			// initial state has already been checked
+			if( i == initial )
+			{
+				// our work here is done
+				db->rollback();
+				return false;
+			}
+
+			// update simulation table with merger point and term loop id
+
+			// increment term loop instance count
+
+			// default case: break, complete the transaction, return true
+			// includes self-loop case
+			break;
+
+		} // end state presence branch
+
+	} // end state loop
+
+
+	// commit transaction
+	db->commit();
+
+	// unlock simulation (implied)
 
 	return true;
 }

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QDebug>
-
+#include <QMutex>
 #include <QtSql>
 
 #include "simulation.h"
@@ -19,6 +19,7 @@ namespace DB
 	};
 	extern ConnectionInfo connectionInfo;
 	extern QSqlDatabase db;
+	extern QMutex simLock;
 
 	bool prepareDatabase( ConnectionInfo xInfo );
 	bool commitSimulation( Simulation* s );
