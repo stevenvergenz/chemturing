@@ -16,7 +16,9 @@ namespace DB
 		QString dbname;
 		QString user;
 		QString password;
-	} connectionInfo;
+	};
+	extern ConnectionInfo connectionInfo;
+	extern QSqlDatabase db;
 
 	bool prepareDatabase( ConnectionInfo xInfo );
 	bool commitSimulation( Simulation* s );

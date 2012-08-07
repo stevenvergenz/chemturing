@@ -16,8 +16,8 @@
 
 // bool would work just as well, same size, but char has int operators
 typedef unsigned char Bit;
-// guaranteed 32 bits
-typedef unsigned long ull;
+// guaranteed 64 bits (should be plenty)
+typedef qulonglong ull;
 
 using namespace std;
 

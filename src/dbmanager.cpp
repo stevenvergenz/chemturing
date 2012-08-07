@@ -3,6 +3,9 @@
 namespace DB
 {
 
+// namespace variables
+QSqlDatabase db;
+ConnectionInfo connectionInfo;
 
 /*******************************************************************
   Ensures that all tables exist and are properly formatted.
@@ -35,7 +38,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 
 	QString createLoops = 
 		"CREATE TABLE IF NOT EXISTS loops ("
-		"loop_id INT UNSIGNED NOT NULL, "
+		"loop_id BIGINT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
 		"instance_cnt INT UNSIGNED, "
 			
@@ -44,10 +47,10 @@ bool prepareDatabase( ConnectionInfo xInfo )
 
 	QString createSimulations = 
 		"CREATE TABLE IF NOT EXISTS simulations ("
-		"sim_id INT UNSIGNED NOT NULL, "
-		"final_state INT UNSIGNED NOT NULL, "
+		"sim_id BIGINT UNSIGNED NOT NULL, "
+		"final_state BIGINT UNSIGNED NOT NULL, "
 		"length INT UNSIGNED, "
-		"term_loop_id INT UNSIGNED, "
+		"term_loop_id BIGINT UNSIGNED, "
 			
 		"PRIMARY KEY (sim_id)"
 		") ENGINE=InnoDB;";
@@ -55,11 +58,11 @@ bool prepareDatabase( ConnectionInfo xInfo )
 	// create the "states" table to contain the discrete states
 	QString createStates = 
 		"CREATE TABLE IF NOT EXISTS states ("
-		"state_def INT UNSIGNED, "
-		"next_state INT UNSIGNED, "
+		"state_def BIGINT UNSIGNED, "
+		"next_state BIGINT UNSIGNED, "
 		"stepnum SMALLINT UNSIGNED, "
-		"sim_id INT UNSIGNED NOT NULL, "
-		"loop_id INT UNSIGNED, "
+		"sim_id BIGINT UNSIGNED NOT NULL, "
+		"loop_id BIGINT UNSIGNED, "
 			
 		"PRIMARY KEY (state_def), "
 		"FOREIGN KEY (sim_id) REFERENCES simulations, "
@@ -122,7 +125,7 @@ bool commitSimulation( Simulation* s )
 	if( !storage.hasLocalData() ){
 		db = new QSqlDatabase();
 		storage.setLocalData(db);
-		*db = QSqlDatabase::cloneDatabase(DB::db, QThread::currentThreadId());
+		*db = QSqlDatabase::cloneDatabase(DB::db, QString::number(QThread::currentThreadId()) );
 
 		// make sure the database exists and the credentials are good
 		if( !db->open() ){
@@ -139,7 +142,7 @@ bool commitSimulation( Simulation* s )
 
 	// check to see if the sim's initial state has already been run
 	query.prepare("SELECT COUNT(state_def) FROM states WHERE state_def=:id;");
-	query.bindValue( ":id", state->pack() );
+	query.bindValue( ":id", QVariant(state->pack()) );
 	if( !query.exec() ){
 		qCritical() << "Cannot query state table!" << endl;
 		return false;
