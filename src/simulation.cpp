@@ -28,6 +28,7 @@ Simulation::~Simulation()
 void Simulation::run()
 {
 	State* cur = initial;
+	length = 0;
 
 	while(true)
 	{
@@ -45,6 +46,7 @@ void Simulation::run()
 		// break out of sim loop if match found
 		if( match ){
 			cur->note = QString("%1 LOOP").arg(stepnum-1);
+			loopState = cur;
 			break;
 		}
 
@@ -52,6 +54,7 @@ void Simulation::run()
 		cur->next = cur->calcNextState();
 		cur->next->prev = cur;
 		cur = cur->next;
+		length++;
 	}
 
 	// calculate simulation properties: mode cycling, dynamism, etc.
@@ -80,7 +83,14 @@ void Simulation::print()
 	f.close();
 }
 
-State* Simulation::getStates()
-{
+State* Simulation::getInitialState(){
 	return initial;
+}
+
+State* Simulation::getLoopState(){
+	return loopState;
+}
+
+int Simulation::getLength(){
+	return length;
 }

@@ -11,9 +11,8 @@ class Simulation : public QRunnable
 {
 private:
 	State* initial;
-	int loopStep;
-	float execPct;
-	float rewritePct;
+	State* loopState;
+	int length;
 	QString outfile;
 	
 public:
@@ -21,7 +20,9 @@ public:
 	~Simulation();
 	void run();
 	void print();
-	State* getStates();
+	State* getInitialState();
+	State* getLoopState();
+	int getLength();
 };
 
 #endif
