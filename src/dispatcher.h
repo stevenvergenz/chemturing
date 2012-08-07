@@ -2,6 +2,7 @@
 #define __DISPATCHER_H
 
 #include <ctime>
+#include <cmath>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QCoreApplication>
@@ -23,6 +24,7 @@ public:
 	enum GenMode {SEQUENTIAL, RANDOM};
 	
 	Dispatcher( QMap<QString,QVariant>* options );
+	static ull random( int bits );
 
 signals:
 	void readyToCalculate();

@@ -28,3 +28,4 @@ HEADERS += \
 	dispatcher.h \
 	dbmanager.h
 
+LIBS += -lm

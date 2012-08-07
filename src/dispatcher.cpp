@@ -4,11 +4,6 @@
 Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 : stateHash(0), dataPointer(0)
 {
-	// make sure the generator is random enough
-	if( RAND_MAX < (1<<NUM_BITS) ){
-		qFatal("Random number generator is not random enough!");
-	}
-
 	// seed random numbers
 	qsrand( time(0) );
 	
@@ -82,10 +77,10 @@ State* Dispatcher::genRandomState()
 	State* s = new State();
 
 	// randomize data pointer
-	s->dataPtr = qrand() % NUM_BITS;
+	s->dataPtr = Dispatcher::random(6) % NUM_BITS;
 
 	// randomize bits and properties
-	unsigned long r = qrand() % (1<<(NUM_BITS+3));
+	unsigned long r = Dispatcher::random(NUM_BITS+3) % (1<<(NUM_BITS+3));
 	s->mem = r&1;  r>>= 1;
 	s->mode = r&1; r>>= 1;
 	s->prep = r&1; r>>= 1;
@@ -106,7 +101,6 @@ State* Dispatcher::genSequentialState()
 
 	unsigned long seed = stateHash;
 	State* s = new State();
-	QMutexLocker lock(&mutex);
 
 	// populate new state with contents of seed
 	s->mem = seed&1;  seed >>=1;
@@ -130,4 +124,21 @@ State* Dispatcher::genSequentialState()
 void Dispatcher::cleanUp()
 {
 
+}
+
+// produces at least n bits of entropy
+ull Dispatcher::random(int bits)
+{
+	// make sure the generator is random enough
+	const int maxbits = log2( (double)(RAND_MAX+1) );
+	ull val = qrand();
+	for(int i=1; i<(bits/maxbits)+1; i++){
+		val <<= maxbits;
+		val |= qrand();
+	}
+	return val;
+
+	/*if( RAND_MAX < (1<<bits) ){
+		qFatal("Random number generator is not random enough!");
+	}*/
 }
