@@ -320,6 +320,11 @@ bool commitSimulation( Simulation* s )
 
 bool stateAlreadyRun(State *s)
 {
+	// do nothing if database is not configured
+	if( DB::connectionInfo.dbname == "" ){
+		return false;
+	}
+
 	QSqlQuery query(DB::db);
 	query.prepare("SELECT COUNT(state_def) AS count FROM states WHERE state_def=:id;");
 	query.bindValue(":id", QVariant(s->pack()) );

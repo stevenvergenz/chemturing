@@ -27,7 +27,7 @@ Simulation::~Simulation()
 
 void Simulation::run()
 {
-	qDebug() << "Writing to " << outfile << endl;
+	//qDebug() << "Running " << QString::number( initial->pack(), 16 ).rightJustified(7, '0') << endl;
 
 	State* cur = initial;
 	length = 0;
@@ -35,6 +35,8 @@ void Simulation::run()
 
 	while(true)
 	{
+		cur->stepNum = stepnum++;
+
 		// check for loops
 		State* temp = initial;
 		bool match = false;
@@ -47,8 +49,6 @@ void Simulation::run()
 			}
 			temp = temp->next;
 		}
-
-		cur->stepNum = stepnum++;
 
 		// break out of sim loop if match found
 		if( match ) break;
@@ -80,6 +80,7 @@ void Simulation::print()
 		f.setFileName(outfile);
 		f.open(QIODevice::WriteOnly);
 		qout.setDevice( &f );
+		qDebug() << "Running " << QString::number( initial->pack(), 16 ).rightJustified(7, '0') << endl;
 	}
 	
 	qout << "Step Bits (prog=\\ data=/)    Mode Mem Command" << endl;

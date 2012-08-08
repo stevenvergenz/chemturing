@@ -14,14 +14,14 @@ void printUsage()
 {
 	cout    << "CHEMTURING v1.0, written by Steven Vergenz" << endl
 		<< "Usage:" << endl
-		<< "  chemecher [--help] --mode <mode> [--count <c>] [--threads <tc>]" << endl
+		<< "  chemturing [--help] --mode <mode> [--count <c>] [--threads <tc>]" << endl
 		<< "      [--file-path <dir>] [--database <host> <db> <user> <pass>]" << endl
 		<< "Arguments:" << endl
 		<< "  --help       : Print this usage information and exit." << endl
 		<< "  --mode       : REQUIRED - Sets state generation mode. RANDOM or SEQUENCE valid." << endl
 		<< "  --count      : Sets the number of simulations to run. Defaults to 1." << endl
 		<< "  --threads    : Sets the number of worker threads. Defaults to the number of processors." << endl
-		<< "  --output-dir : Write simulations to files in the given directory. Defaults to current directory." << endl
+		<< "  --output-dir : Write simulations to files in the given directory." << endl
 		<< "  --database   : Use the given database for state comparisons." << endl
 		<< "  NOTE: if neither output-dir nor database is specified, chemturing will default to stdout." << endl
 		<< endl;

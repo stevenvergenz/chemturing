@@ -59,7 +59,13 @@ void Dispatcher::startCalculation()
 
 	for( cid=0; cid<runcount; cid++ )
 	{
+		// only run unique simulations
 		State* init = genState();
+		while( DB::stateAlreadyRun(init) ){
+			delete init;
+			init = genState();
+		}
+
 		QString file;
 		if( outputDir == "stdout" ){
 			file = "stdout";
