@@ -71,9 +71,16 @@ void Simulation::run()
 
 void Simulation::print()
 {
-	QFile f(outfile);
-	f.open(QIODevice::WriteOnly);
-	QTextStream qout( &f );
+	QTextStream qout(stdout);
+	QFile f;
+	if( outfile == "" ){
+		return;
+	}
+	else if( outfile != "stdout" ){
+		f.setFileName(outfile);
+		f.open(QIODevice::WriteOnly);
+		qout.setDevice( &f );
+	}
 	
 	qout << "Step Bits (prog=\\ data=/)    Mode Mem Command" << endl;
 	State* cur = initial;
@@ -82,8 +89,9 @@ void Simulation::print()
 			<< cur->toString("%1  %2  %3   %4") << endl;
 		cur = cur->next;
 	}
+	qout << "Loop length: " << loopLength << endl;
 	
-	f.close();
+	if( f.isOpen() ) f.close();
 }
 
 State* Simulation::getInitialState(){

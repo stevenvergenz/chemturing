@@ -23,6 +23,7 @@ void printUsage()
 		<< "  --threads    : Sets the number of worker threads. Defaults to the number of processors." << endl
 		<< "  --output-dir : Write simulations to files in the given directory. Defaults to current directory." << endl
 		<< "  --database   : Use the given database for state comparisons." << endl
+		<< "  NOTE: if neither output-dir nor database is specified, chemturing will default to stdout." << endl
 		<< endl;
 }
 
@@ -40,7 +41,7 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 	//map->insert("mode", "random");
 	map->insert("count", 1);
 	map->insert("threads", QThread::idealThreadCount());
-	map->insert("output-dir", QDir::current().absolutePath());
+	//map->insert("output-dir", QDir::current().absolutePath());
 
 	// loop over arguments, populate map
 	QStringList::const_iterator i;

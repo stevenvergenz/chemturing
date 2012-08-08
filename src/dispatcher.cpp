@@ -23,7 +23,16 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 			qFatal("Could not verify database!");
 		}
 	}
-	
+
+	if( options->contains("output-dir") ){
+		outputDir = options->value("output-dir").toString();
+	}
+
+	// no other output mode was specified, default to stdout
+	if( !options->contains("database") && !options->contains("output-dir") ){
+		outputDir = "stdout";
+	}
+
 	// initialize manditory run parameters
 	if( options->value("mode").toString() == "random" ){
 		mode = RANDOM;
@@ -33,7 +42,6 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 	}
 	runcount = options->value("count").toInt();
 	threadpool.setMaxThreadCount( options->value("threads").toInt() );
-	outputDir = QDir( options->value("output-dir").toString() );
 	
 	// queue start/end events
 	connect( this, SIGNAL(readyToCalculate()), this, SLOT(startCalculation()) );
@@ -47,12 +55,25 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 void Dispatcher::startCalculation()
 {
 	int cid;
-	
+	QDir dir(outputDir);
+
 	for( cid=0; cid<runcount; cid++ )
 	{
 		State* init = genState();
-		QString file = QString::number( init->pack(), 16 ).rightJustified(7, '0') + ".txt";
-		Simulation* s = new Simulation( init, outputDir.absoluteFilePath(file) );
+		QString file;
+		if( outputDir == "stdout" ){
+			file = "stdout";
+		}
+		else if( outputDir == "" ){
+			file = "";
+		}
+		else {
+			file = dir.absoluteFilePath(
+				QString::number( init->pack(), 16 ).rightJustified(7, '0') + ".txt"
+			);
+		}
+
+		Simulation* s = new Simulation( init, file );
 		s->setAutoDelete(true);
 		threadpool.start(s);
 	}

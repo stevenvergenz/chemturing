@@ -45,7 +45,7 @@ private:
 	// run parameters
 	GenMode mode;
 	int runcount;
-	QDir outputDir;
+	QString outputDir;
 	
 	State* genState();
 	State* genRandomState();
