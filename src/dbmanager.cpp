@@ -5,7 +5,7 @@ namespace DB
 
 // namespace variables
 QSqlDatabase db;
-ConnectionInfo connectionInfo;
+ConnectionInfo connectionInfo = {"","","",""};
 QMutex simLock;
 
 /*******************************************************************
@@ -121,6 +121,11 @@ bool prepareDatabase( ConnectionInfo xInfo )
 *******************************************************************/
 bool commitSimulation( Simulation* s )
 {
+	// do nothing if database is not configured
+	if( DB::connectionInfo.dbname == "" ){
+		return true;
+	}
+
 	// set up thread-dependent db connection
 	QThreadStorage<QSqlDatabase*> storage;
 	QSqlDatabase* db;
@@ -143,16 +148,25 @@ bool commitSimulation( Simulation* s )
 	QSqlQuery testState(*db), addState(*db), addSim(*db), updateSim(*db);
 	QSqlQuery addLoop(*db), incrementLoop(*db), termLoopFromState(*db);
 
-	testState.prepare("SELECT COUNT(state_def) AS count, loop_id, sim_id FROM states "
+	testState.prepare(
+		"SELECT COUNT(state_def) AS count, loop_id, sim_id FROM states "
 		"WHERE state_def=:id;");
-	addState.prepare("INSERT INTO states (state_def, next_state, stepnum, sim_id, loop_id) "
+	addState.prepare(
+		"INSERT INTO states (state_def, next_state, stepnum, sim_id, loop_id) "
 		"VALUES (:statedef, :nextstate, :stepnum, :simid, :loopid);");
-	addSim.prepare("INSERT INTO simulations (sim_id, length) VALUES (:simid, :length);");
-	updateSim.prepare("UPDATE simulations SET final_state=:final, term_loop_id=:termloopid "
+	addSim.prepare(
+		"INSERT INTO simulations (sim_id, length) VALUES (:simid, :length);");
+	updateSim.prepare(
+		"UPDATE simulations SET final_state=:final, term_loop_id=:termloopid "
 		"WHERE sim_id=:id;");
-	addLoop.prepare("INSERT INTO loops (loop_id, length, instance_cnt) "
+	addLoop.prepare(
+		"INSERT INTO loops (loop_id, length, instance_cnt) "
 		"VALUES (:loopid, :length, 0);");
-	incrementLoop.prepare("UPDATE loops SET instance_cnt=instance_cnt+1 WHERE loop_id=:id;");
+	incrementLoop.prepare(
+		"UPDATE loops SET instance_cnt=instance_cnt+1 WHERE loop_id=:id;");
+	termLoopFromState.prepare(
+		"SELECT simulations.term_loop_id AS termloop FROM states JOIN simulations "
+		"ON states.sim_id=simulations.sim_id WHERE states.state_def=:id;");
 
 	State* i;
 	State* initial = s->getInitialState();
@@ -177,7 +191,8 @@ bool commitSimulation( Simulation* s )
 		// check if current state is in the db
 		testState.bindValue( ":id", QVariant(i->pack()) );
 		if( !testState.exec() ){
-			qCritical() << "Cannot query state table!" << endl;
+			qCritical() << "Cannot query state table!"
+				<< testState.lastError().text();
 			db->rollback();
 			return false;
 		}
@@ -193,14 +208,15 @@ bool commitSimulation( Simulation* s )
 				addSim.bindValue(":simid", QVariant(initial->pack()));
 				addSim.bindValue(":length", QVariant(s->getLength()));
 				if( !addSim.exec() ){
-					qCritical() << "Cannot add new simulation to database!" << endl;
+					qCritical() << "Cannot add new simulation to database!"
+						<< addSim.lastError().text();
 					db->rollback();
 					return false;
 				}
 			}
 
 			// state is the start of the loop
-			if( i->equals(s->getLoopState()) )
+			if( *i == *(s->getLoopState()) )
 			{
 				// set the loop id flag for future commits
 				loopFlag = true;
@@ -209,7 +225,8 @@ bool commitSimulation( Simulation* s )
 				// create new entry in the loop table
 				addLoop.bindValue(":id", QVariant(loopState));
 				if( !addLoop.exec() ){
-					qCritical() << "Cannot add new loop to database!" << endl;
+					qCritical() << "Cannot add new loop to database!"
+						<< addLoop.lastError().text();
 					db->rollback();
 					return false;
 				}
@@ -217,6 +234,17 @@ bool commitSimulation( Simulation* s )
 			}
 
 			// commit state to db
+			addState.bindValue(":statedef", QVariant(i->pack()));
+			addState.bindValue(":nextstate", QVariant(i->next->pack()));
+			addState.bindValue(":stepnum", QVariant(i->stepNum));
+			addState.bindValue(":simid", QVariant(initial->pack()));
+			addState.bindValue(":loopid", loopFlag ? QVariant(loopState) : QVariant() );
+			if( !addState.exec() ){
+				qCritical() << "Cannot add new state to database!"
+					<< addState.lastError().text();
+				db->rollback();
+				return false;
+			}
 		}
 
 		// state IS in db
@@ -230,9 +258,44 @@ bool commitSimulation( Simulation* s )
 				return false;
 			}
 
+			// get the db state's loop id
+			ull termLoop = 0;
+			if( testState.record().value("loop_id").isNull() )
+			{
+				// join a non-loop state
+				termLoopFromState.bindValue(":id", QVariant(i->pack()));
+				if( !termLoopFromState.exec() ){
+					qCritical() << "Cannot retrieve terminal loop from state!"
+						<< termLoopFromState.lastError().text();
+					db->rollback();
+					return false;
+				}
+				termLoop = termLoopFromState.record().value("termloop");
+			}
+			else
+			{
+				// join a loop state
+				termLoop = testState.record().value("loop_id").toLongLong();
+			}
+
 			// update simulation table with merger point and term loop id
+			updateSim.bindValue(":finalstate", QVariant(i->pack()));
+			updateSim.bindValue(":termloopid", QVariant(termLoop));
+			if( !updateSim.exec() ){
+				qCritical() << "Cannot update sim with terminal info!"
+					<< updateSim.lastError().text();
+				db->rollback();
+				return false;
+			}
 
 			// increment term loop instance count
+			incrementLoop.bindValue(":id", termLoop);
+			if( !incrementLoop.exec() ){
+				qCritical() << "Cannot increment loop instance count!"
+					<< incrementLoop.lastError().text();
+				db->rollback();
+				return false;
+			}
 
 			// default case: break, complete the transaction, return true
 			// includes self-looping state case
@@ -246,7 +309,8 @@ bool commitSimulation( Simulation* s )
 	// commit transaction
 	db->commit();
 
-	// unlock simulation (implied)
+	// unlock simulation
+	locker.unlock();
 
 	return true;
 }
@@ -258,7 +322,7 @@ bool stateAlreadyRun(State *s)
 	query.prepare("SELECT COUNT(state_def) AS count FROM states WHERE state_def=:id;");
 	query.bindValue(":id", QVariant(s->pack()) );
 	query.exec();
-	return query.record().value("count").toInt() == 1;
+	return query.record().value("count").toInt() != 0;
 }
 
 } // end namespace DBManager
