@@ -46,6 +46,8 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 	QStringList::const_iterator i;
 	for( i=arglist.constBegin()+1; i!=arglist.constEnd(); i++ )
 	{
+		//cout << (*i).toStdString() << endl;
+
 		// parse mode
 		if( *i == "--mode" )
 		{
@@ -103,7 +105,12 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 				val = val + *i + " ";
 				i++;
 			}
+
 			(*map)["database"] = val;
+
+			// make sure we haven't run past the end
+			if( i == arglist.constEnd() )
+				break;
 		}
 		
 		// parse file output directory

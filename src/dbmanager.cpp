@@ -66,15 +66,15 @@ bool prepareDatabase( ConnectionInfo xInfo )
 		"loop_id BIGINT UNSIGNED, "
 			
 		"PRIMARY KEY (state_def), "
-		"FOREIGN KEY (sim_id) REFERENCES simulations, "
-		"FOREIGN KEY (loop_id) REFERENCES loops"
+		"FOREIGN KEY (sim_id)  REFERENCES simulations(sim_id), "
+		"FOREIGN KEY (loop_id) REFERENCES loops(loop_id)"
 		") ENGINE=InnoDB;";
 		
 		
 	// ensure that the tables exist (does not guarantee layout)
-	QSqlQuery query;
-	if( !query.exec(createStates) || !query.exec(createLoops) || !query.exec(createSimulations) ){
-		qCritical() << "Could not create critical table: " << db.lastError().text();
+	QSqlQuery query(DB::db);
+	if( !query.exec(createLoops) || !query.exec(createSimulations) || !query.exec(createStates) ){
+		qCritical() << "Could not create critical table: " << query.lastError().text() << query.lastError().type();
 		return false;
 	}
 	
@@ -109,7 +109,8 @@ bool prepareDatabase( ConnectionInfo xInfo )
 		return false;
 	}
 	
-	db.close();
+	// leave open for main-thread db calls
+	//db.close();
 
 	return true;
 }
@@ -140,21 +141,27 @@ bool commitSimulation( Simulation* s )
 
 	// prepare queries
 	QSqlQuery testState(*db), addState(*db), addSim(*db), updateSim(*db);
-	testState.prepare("SELECT COUNT(state_def)as count, loop_id, sim_id FROM states "
+	QSqlQuery addLoop(*db), incrementLoop(*db), termLoopFromState(*db);
+
+	testState.prepare("SELECT COUNT(state_def) AS count, loop_id, sim_id FROM states "
 		"WHERE state_def=:id;");
 	addState.prepare("INSERT INTO states (state_def, next_state, stepnum, sim_id, loop_id) "
 		"VALUES (:statedef, :nextstate, :stepnum, :simid, :loopid);");
 	addSim.prepare("INSERT INTO simulations (sim_id, length) VALUES (:simid, :length);");
 	updateSim.prepare("UPDATE simulations SET final_state=:final, term_loop_id=:termloopid "
 		"WHERE sim_id=:id;");
+	addLoop.prepare("INSERT INTO loops (loop_id, length, instance_cnt) "
+		"VALUES (:loopid, :length, 0);");
+	incrementLoop.prepare("UPDATE loops SET instance_cnt=instance_cnt+1 WHERE loop_id=:id;");
 
 	State* i;
 	State* initial = s->getInitialState();
-	ull loopFlag = 0;
+	ull loopState = 0;
+	bool loopFlag = false;
 
 	// make sure the simulation has been run
 	if( initial == NULL || initial->next == NULL ){
-		qCritical() << "Cannot commit an incomplete simulation" << endl;
+		qCritical() << "Cannot commit an incomplete simulation." << endl;
 		return false;
 	}
 
@@ -165,7 +172,7 @@ bool commitSimulation( Simulation* s )
 	db->transaction();
 
 	// loop over states
-	for( i = initial; i->next!=NULL; i = i->next )
+	for( i = initial; i!=NULL; i = i->next )
 	{
 		// check if current state is in the db
 		testState.bindValue( ":id", QVariant(i->pack()) );
@@ -193,14 +200,20 @@ bool commitSimulation( Simulation* s )
 			}
 
 			// state is the start of the loop
-			if( i == s->getLoopState() )
+			if( i->equals(s->getLoopState()) )
 			{
 				// set the loop id flag for future commits
-				loopFlag = i->pack();
+				loopFlag = true;
+				loopState = i->pack();
 
 				// create new entry in the loop table
+				addLoop.bindValue(":id", QVariant(loopState));
+				if( !addLoop.exec() ){
+					qCritical() << "Cannot add new loop to database!" << endl;
+					db->rollback();
+					return false;
+				}
 
-				// update sim table with term loop id
 			}
 
 			// commit state to db
@@ -222,7 +235,7 @@ bool commitSimulation( Simulation* s )
 			// increment term loop instance count
 
 			// default case: break, complete the transaction, return true
-			// includes self-loop case
+			// includes self-looping state case
 			break;
 
 		} // end state presence branch
@@ -238,5 +251,14 @@ bool commitSimulation( Simulation* s )
 	return true;
 }
 
+
+bool stateAlreadyRun(State *s)
+{
+	QSqlQuery query(DB::db);
+	query.prepare("SELECT COUNT(state_def) AS count FROM states WHERE state_def=:id;");
+	query.bindValue(":id", QVariant(s->pack()) );
+	query.exec();
+	return query.record().value("count").toInt() == 1;
+}
 
 } // end namespace DBManager

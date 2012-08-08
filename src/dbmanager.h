@@ -23,6 +23,7 @@ namespace DB
 
 	bool prepareDatabase( ConnectionInfo xInfo );
 	bool commitSimulation( Simulation* s );
+	bool stateAlreadyRun( State* s );
 }
 
 #endif
