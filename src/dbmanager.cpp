@@ -191,7 +191,7 @@ bool commitSimulation( Simulation* s )
 		// check if current state is in the db
 		testState.bindValue( ":id", QVariant(i->pack()) );
 		if( !testState.exec() ){
-			qCritical() << "Cannot query state table!"
+			qCritical() << "Cannot query state table!" << endl
 				<< testState.lastError().text();
 			db->rollback();
 			return false;
@@ -206,9 +206,9 @@ bool commitSimulation( Simulation* s )
 			{
 				// commit new simulation entry
 				addSim.bindValue(":simid", QVariant(initial->pack()));
-				addSim.bindValue(":length", QVariant(s->getLength()));
+				addSim.bindValue(":length", QVariant(s->getTotalLength()));
 				if( !addSim.exec() ){
-					qCritical() << "Cannot add new simulation to database!"
+					qCritical() << "Cannot add new simulation to database!" << endl
 						<< addSim.lastError().text();
 					db->rollback();
 					return false;
@@ -224,8 +224,9 @@ bool commitSimulation( Simulation* s )
 
 				// create new entry in the loop table
 				addLoop.bindValue(":id", QVariant(loopState));
+				addLoop.bindValue(":length", QVariant(s->getLoopLength()));
 				if( !addLoop.exec() ){
-					qCritical() << "Cannot add new loop to database!"
+					qCritical() << "Cannot add new loop to database!" << endl
 						<< addLoop.lastError().text();
 					db->rollback();
 					return false;
@@ -240,7 +241,7 @@ bool commitSimulation( Simulation* s )
 			addState.bindValue(":simid", QVariant(initial->pack()));
 			addState.bindValue(":loopid", loopFlag ? QVariant(loopState) : QVariant() );
 			if( !addState.exec() ){
-				qCritical() << "Cannot add new state to database!"
+				qCritical() << "Cannot add new state to database!" << endl
 					<< addState.lastError().text();
 				db->rollback();
 				return false;
@@ -265,12 +266,12 @@ bool commitSimulation( Simulation* s )
 				// join a non-loop state
 				termLoopFromState.bindValue(":id", QVariant(i->pack()));
 				if( !termLoopFromState.exec() ){
-					qCritical() << "Cannot retrieve terminal loop from state!"
+					qCritical() << "Cannot retrieve terminal loop from state!" << endl
 						<< termLoopFromState.lastError().text();
 					db->rollback();
 					return false;
 				}
-				termLoop = termLoopFromState.record().value("termloop");
+				termLoop = termLoopFromState.record().value("termloop").toLongLong();
 			}
 			else
 			{
@@ -279,10 +280,11 @@ bool commitSimulation( Simulation* s )
 			}
 
 			// update simulation table with merger point and term loop id
-			updateSim.bindValue(":finalstate", QVariant(i->pack()));
+			updateSim.bindValue(":final", QVariant(i->pack()));
 			updateSim.bindValue(":termloopid", QVariant(termLoop));
+			updateSim.bindValue(":id", QVariant(initial->pack()));
 			if( !updateSim.exec() ){
-				qCritical() << "Cannot update sim with terminal info!"
+				qCritical() << "Cannot update sim with terminal info!" << endl
 					<< updateSim.lastError().text();
 				db->rollback();
 				return false;
@@ -291,7 +293,7 @@ bool commitSimulation( Simulation* s )
 			// increment term loop instance count
 			incrementLoop.bindValue(":id", termLoop);
 			if( !incrementLoop.exec() ){
-				qCritical() << "Cannot increment loop instance count!"
+				qCritical() << "Cannot increment loop instance count!" << endl
 					<< incrementLoop.lastError().text();
 				db->rollback();
 				return false;

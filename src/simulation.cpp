@@ -27,6 +27,8 @@ Simulation::~Simulation()
 
 void Simulation::run()
 {
+	qDebug() << "Writing to " << outfile << endl;
+
 	State* cur = initial;
 	length = 0;
 	int stepnum = 0;
@@ -35,23 +37,21 @@ void Simulation::run()
 	{
 		// check for loops
 		State* temp = initial;
-		int matchnum = 0;
 		bool match = false;
 		while( temp != cur && !match ){
-			if( temp->equals(cur) )
+			if( temp->equals(cur) ){
 				match = true;
+				cur->note = QString("%1 LOOP").arg(temp->stepNum);
+				loopLength = cur->stepNum - temp->stepNum;
+				loopState = temp;
+			}
 			temp = temp->next;
-			matchnum++;
 		}
 
 		cur->stepNum = stepnum++;
 
 		// break out of sim loop if match found
-		if( match ){
-			cur->note = QString("%1 LOOP").arg(matchnum-1);
-			loopState = cur;
-			break;
-		}
+		if( match ) break;
 
 		// iterate
 		cur->next = cur->calcNextState();
@@ -61,9 +61,10 @@ void Simulation::run()
 	}
 
 	// calculate simulation properties: mode cycling, dynamism, etc.
-	
+
 
 	// commit new run to the database and/or file
+	DB::commitSimulation(this);
 	print();
 }
 
@@ -93,6 +94,10 @@ State* Simulation::getLoopState(){
 	return loopState;
 }
 
-int Simulation::getLength(){
+int Simulation::getTotalLength(){
 	return length;
+}
+
+int Simulation::getLoopLength(){
+	return loopLength;
 }

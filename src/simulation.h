@@ -7,12 +7,16 @@
 
 #include "state.h"
 
+class Simulation;
+
+#include "dbmanager.h"
+
 class Simulation : public QRunnable
 {
 private:
 	State* initial;
 	State* loopState;
-	int length;
+	int length, loopLength;
 	QString outfile;
 	
 public:
@@ -22,7 +26,8 @@ public:
 	void print();
 	State* getInitialState();
 	State* getLoopState();
-	int getLength();
+	int getTotalLength();
+	int getLoopLength();
 };
 
 #endif
