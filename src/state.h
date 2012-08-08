@@ -30,6 +30,7 @@ struct State
 	int mode;
 	Bit prep;
 	Bit mem;
+	int stepNum;
 	unsigned char progPtrOffset;
 	unsigned char dataPtr;
 	QString note;

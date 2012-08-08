@@ -29,23 +29,26 @@ void Simulation::run()
 {
 	State* cur = initial;
 	length = 0;
+	int stepnum = 0;
 
 	while(true)
 	{
 		// check for loops
 		State* temp = initial;
-		int stepnum = 0;
+		int matchnum = 0;
 		bool match = false;
 		while( temp != cur && !match ){
 			if( temp->equals(cur) )
 				match = true;
 			temp = temp->next;
-			stepnum++;
+			matchnum++;
 		}
+
+		cur->stepNum = stepnum++;
 
 		// break out of sim loop if match found
 		if( match ){
-			cur->note = QString("%1 LOOP").arg(stepnum-1);
+			cur->note = QString("%1 LOOP").arg(matchnum-1);
 			loopState = cur;
 			break;
 		}
@@ -73,9 +76,8 @@ void Simulation::print()
 	
 	qout << "Step Bits (prog=\\ data=/)    Mode Mem Command" << endl;
 	State* cur = initial;
-	int stepcount = 0;
 	while( cur != NULL ){
-		qout << QString("%1 ").arg(stepcount++, 4)
+		qout << QString("%1 ").arg(cur->stepNum, 4)
 			<< cur->toString("%1  %2  %3   %4") << endl;
 		cur = cur->next;
 	}
