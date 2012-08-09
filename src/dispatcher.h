@@ -17,12 +17,13 @@
 #include "state.h"
 #include "dbmanager.h"
 
+using namespace std;
 
 class Dispatcher : public QObject
 {
 Q_OBJECT
 public:
-	enum GenMode {SEQUENTIAL, RANDOM};
+	enum GenMode {SEQUENTIAL, RANDOM, SINGLE};
 	
 	Dispatcher( QMap<QString,QVariant>* options );
 	static ull random( int bits );
@@ -47,6 +48,7 @@ private:
 	GenMode mode;
 	int runcount;
 	QString outputDir;
+	ull singleState;
 	
 	State* genState();
 	State* genRandomState();

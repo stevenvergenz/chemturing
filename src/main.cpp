@@ -18,7 +18,8 @@ void printUsage()
 		<< "      [--file-path <dir>] [--database <host> <db> <user> <pass>]" << endl
 		<< "Arguments:" << endl
 		<< "  --help       : Print this usage information and exit." << endl
-		<< "  --mode       : REQUIRED - Sets state generation mode. RANDOM or SEQUENCE valid." << endl
+		<< "  --mode       : REQUIRED - Sets state generation mode. RANDOM, SEQUENCE, or SINGLE valid." << endl
+		<< "                 If SINGLE is given, it must be followed by an initial state identifier." << endl
 		<< "  --count      : Sets the number of simulations to run. Defaults to 1." << endl
 		<< "  --threads    : Sets the number of worker threads. Defaults to the number of processors." << endl
 		<< "  --output-dir : Write simulations to files in the given directory." << endl
@@ -58,6 +59,19 @@ QMap<QString,QVariant>* parseArguments( QStringList arglist )
 			}
 			else if( QString::compare( *i, "sequence", Qt::CaseInsensitive ) == 0 ){
 				(*map)["mode"] = "sequence";
+			}
+			else if( QString::compare( *i, "single", Qt::CaseInsensitive ) == 0 ){
+				(*map)["mode"] = "single";
+				i++;
+				bool ok;
+				unsigned long long val = (*i).toLongLong( &ok, 0 );
+				if( !ok ){
+					cout << "Not a valid initial state, exiting." << endl;
+					return NULL;
+				}
+				else {
+					(*map)["state"] = val;
+				}
 			}
 			else {
 				cout << "Invalid mode, defaulting to RANDOM." << endl;

@@ -18,11 +18,11 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 		cnxInfo.user     = info[2];
 		cnxInfo.password = info[3];
 
-		std::cout << "Connecting to database with " << cnxInfo.toString().toStdString() << endl;
+		cout << "Connecting to database with " << cnxInfo.toString().toStdString() << endl;
 		if( ! DB::prepareDatabase(cnxInfo) ){
 			qFatal("Could not verify database!");
 		}
-		else std::cout << "Connected" << endl;
+		else cout << "Connected." << endl;
 	}
 
 	if( options->contains("output-dir") ){
@@ -38,8 +38,12 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 	if( options->value("mode").toString() == "random" ){
 		mode = RANDOM;
 	}
-	else {
+	else if( options->value("mode").toString() == "sequence" ){
 		mode = SEQUENTIAL;
+	}
+	else {
+		mode = SINGLE;
+		singleState = options->value("state").toLongLong();
 	}
 	runcount = options->value("count").toInt();
 	threadpool.setMaxThreadCount( options->value("threads").toInt() );
@@ -58,10 +62,36 @@ void Dispatcher::startCalculation()
 	int cid;
 	QDir dir(outputDir);
 
+	cout << "Beginning simulations";
+
+	State* init;
+
+	// run singleton and exit
+	if( mode == SINGLE )
+	{
+		init = new State(singleState);
+		QString file;
+		if( outputDir == "stdout" )
+			file = "stdout";
+		else if( outputDir == "" )
+			file = "";
+		else {
+			file = dir.absoluteFilePath(
+				QString::number( init->pack(), 16 ).rightJustified(7, '0') + ".txt"
+			);
+		}
+
+		Simulation* s = new Simulation(init, file);
+		s->run();
+		cleanUp();
+		return;
+	}
+
 	for( cid=0; cid<runcount; cid++ )
 	{
+		init = genState();
+
 		// only run unique simulations
-		State* init = genState();
 		while( DB::stateAlreadyRun(init) ){
 			delete init;
 			init = genState();
@@ -86,16 +116,9 @@ void Dispatcher::startCalculation()
 	}
 	
 	while( !threadpool.waitForDone(1000) )
-		std::cout << ".";
+		cout << ".";
 
-	if( Simulation::abort ){
-		qCritical() << "There was a problem with the simulation! They have been aborted.";
-	}
-	else {
-		std::cout << endl << "Simulations completed successfully." << endl;
-	}
-	emit done();
-	exit(0);
+	cleanUp();
 }
 
 
@@ -159,7 +182,14 @@ State* Dispatcher::genSequentialState()
 
 void Dispatcher::cleanUp()
 {
-
+	if( Simulation::abort ){
+		qCritical() << "There was a problem with the simulation! They have been aborted.";
+	}
+	else {
+		cout << endl << "Simulations completed successfully." << endl;
+	}
+	emit done();
+	exit(0);
 }
 
 // produces at least n bits of entropy
