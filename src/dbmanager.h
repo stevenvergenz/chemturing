@@ -16,6 +16,9 @@ namespace DB
 		QString dbname;
 		QString user;
 		QString password;
+		QString toString(){
+			return QString("(%1 %2 %3 %4)").arg(host,dbname,user,password);
+		}
 	};
 	extern ConnectionInfo connectionInfo;
 	extern QSqlDatabase db;

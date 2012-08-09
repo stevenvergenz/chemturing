@@ -132,11 +132,16 @@ bool commitSimulation( Simulation* s )
 	if( !storage.hasLocalData() ){
 		db = new QSqlDatabase();
 		storage.setLocalData(db);
-		*db = QSqlDatabase::cloneDatabase(DB::db, QString::number(QThread::currentThreadId()) );
+		*db = QSqlDatabase::addDatabase("QMYSQL", QString::number(QThread::currentThreadId()) );
+		db->setHostName(DB::connectionInfo.host);
+		db->setDatabaseName(DB::connectionInfo.dbname);
+		db->setUserName(DB::connectionInfo.user);
+		db->setPassword(DB::connectionInfo.password);
+
 
 		// make sure the database exists and the credentials are good
 		if( !db->open() ){
-			qCritical() << "Could not open threaded database" << endl;
+			qCritical() << "Could not open threaded database";
 			return false;
 		}
 	}
@@ -175,12 +180,12 @@ bool commitSimulation( Simulation* s )
 
 	// make sure the simulation has been run
 	if( initial == NULL || initial->next == NULL ){
-		qCritical() << "Cannot commit an incomplete simulation." << endl;
+		qCritical() << "Cannot commit an incomplete simulation.";
 		return false;
 	}
 
 	// lock simulation
-	QMutexLocker locker( &DB::simLock );
+	//QMutexLocker locker( &DB::simLock );
 
 	// start transaction
 	db->transaction();
@@ -312,7 +317,7 @@ bool commitSimulation( Simulation* s )
 	db->commit();
 
 	// unlock simulation
-	locker.unlock();
+	//locker.unlock();
 
 	return true;
 }

@@ -18,7 +18,7 @@ private:
 	State* loopState;
 	int length, loopLength;
 	QString outfile;
-	
+
 public:
 	Simulation( State* s, QString out );
 	~Simulation();
@@ -28,6 +28,10 @@ public:
 	State* getLoopState();
 	int getTotalLength();
 	int getLoopLength();
+
+	// handling abnormal exits
+	static bool abort;
+	static QMutex abortLock;
 };
 
 #endif

@@ -18,7 +18,7 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 		cnxInfo.user     = info[2];
 		cnxInfo.password = info[3];
 
-		qDebug() << "Connecting to database with (" << info << ")";
+		qDebug() << "Connecting to database with " << cnxInfo.toString();
 		if( ! DB::prepareDatabase(cnxInfo) ){
 			qFatal("Could not verify database!");
 		}
@@ -84,7 +84,12 @@ void Dispatcher::startCalculation()
 		threadpool.start(s);
 	}
 	
-	threadpool.waitForDone();
+	while( !threadpool.waitForDone(1000) )
+		qDebug() << ".";
+
+	if( Simulation::abort ){
+		qCritical() << "There was a problem with the simulation! They have been aborted.";
+	}
 	emit done();
 	exit(0);
 }

@@ -1,5 +1,8 @@
 #include "simulation.h"
 
+bool Simulation::abort = false;
+QMutex Simulation::abortLock;
+
 Simulation::Simulation( State* s, QString out ) : initial(s), outfile(out)
 {
 
@@ -28,6 +31,9 @@ Simulation::~Simulation()
 void Simulation::run()
 {
 	//qDebug() << "Running " << QString::number( initial->pack(), 16 ).rightJustified(7, '0') << endl;
+
+	// do not run the simulation if there is a problem
+	if( Simulation::abort ) return;
 
 	State* cur = initial;
 	length = 0;
@@ -64,7 +70,12 @@ void Simulation::run()
 
 
 	// commit new run to the database and/or file
-	DB::commitSimulation(this);
+	if( !DB::commitSimulation(this) ){
+		qCritical() << "Failed to commit simulation to database!";
+		Simulation::abortLock.lock();
+		Simulation::abort = true;
+		Simulation::abortLock.unlock();
+	}
 	print();
 }
 
