@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QMutex>
 #include <QtSql>
+#include <QHash>
 
 #include "simulation.h"
 
@@ -21,8 +22,9 @@ namespace DB
 		}
 	};
 	extern ConnectionInfo connectionInfo;
-	extern QSqlDatabase db;
-	extern QMutex simLock;
+	extern QHash<int, QSqlDatabase*> dbStore;
+	//extern QSqlDatabase db;
+	extern QMutex dbLock;
 
 	bool prepareDatabase( ConnectionInfo xInfo );
 	bool commitSimulation( Simulation* s );

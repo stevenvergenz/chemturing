@@ -4,9 +4,11 @@ namespace DB
 {
 
 // namespace variables
-QSqlDatabase db;
+QHash<int, QSqlDatabase*> dbStore;
+//QSqlDatabase db;
 ConnectionInfo connectionInfo = {"","","",""};
-QMutex simLock;
+QMutex dbLock;
+
 
 /*******************************************************************
   Ensures that all tables exist and are properly formatted.
@@ -14,19 +16,32 @@ QMutex simLock;
 *******************************************************************/
 bool prepareDatabase( ConnectionInfo xInfo )
 {
+	// write connection info to the global space for future connections to use
 	DB::connectionInfo = xInfo;
 
-	db = QSqlDatabase::addDatabase("QMYSQL");
-	db.setHostName(xInfo.host);
-	db.setDatabaseName(xInfo.dbname);
-	db.setUserName(xInfo.user);
-	db.setPassword(xInfo.password);
+	QSqlDatabase* db;
+	dbLock.lock();
+	if( !dbStore.contains(QThread::currentThreadId()) ){
+		db = new QSqlDatabase();
+		*db = QSqlDatabase::addDatabase("QMYSQL", QString::number(QThread::currentThreadId()));
+		db->setHostName(DB::connectionInfo.host);
+		db->setDatabaseName(DB::connectionInfo.dbname);
+		db->setUserName(DB::connectionInfo.user);
+		db->setPassword(DB::connectionInfo.password);
+		dbStore.insert(QThread::currentThreadId(), db);
 
-	// make sure the database exists and the credentials are good
-	if( !db.open() ){
-		qCritical() << "Could not open database";
-		return false;
+		// make sure the database exists and the credentials are good
+		if( !db->open() ){
+			qCritical() << "Could not open database";
+			return false;
+		}
 	}
+	else {
+		db = dbStore[QThread::currentThreadId()];
+	}
+	dbLock.unlock();
+
+
 
 
 	/*QString createMerges = 
@@ -72,14 +87,14 @@ bool prepareDatabase( ConnectionInfo xInfo )
 		
 		
 	// ensure that the tables exist (does not guarantee layout)
-	QSqlQuery query(DB::db);
+	QSqlQuery query(*db);
 	if( !query.exec(createLoops) || !query.exec(createSimulations) || !query.exec(createStates) ){
 		qCritical() << "Could not create critical table: " << query.lastError().text() << query.lastError().type();
 		return false;
 	}
 	
 	// confirm the layout of the critical tables
-	QSqlRecord table = db.record("loops");
+	QSqlRecord table = db->record("loops");
 	if( !table.contains("loop_id")
 		|| !table.contains("length")
 		|| !table.contains("instance_cnt")
@@ -88,7 +103,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 		return false;
 	}
 	
-	table = db.record("simulations");
+	table = db->record("simulations");
 	if( !table.contains("sim_id")
 		|| !table.contains("final_state")
 		|| !table.contains("length")
@@ -98,7 +113,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 		return false;
 	}
 	
-	table = db.record("states");
+	table = db->record("states");
 	if( !table.contains("state_def")
 		|| !table.contains("next_state")
 		|| !table.contains("stepnum")
@@ -110,7 +125,7 @@ bool prepareDatabase( ConnectionInfo xInfo )
 	}
 	
 	// leave open for main-thread db calls
-	//db.close();
+	//db->close();
 
 	return true;
 }
@@ -127,27 +142,27 @@ bool commitSimulation( Simulation* s )
 	}
 
 	// set up thread-dependent db connection
-	QThreadStorage<QSqlDatabase*> storage;
 	QSqlDatabase* db;
-	if( !storage.hasLocalData() ){
+	dbLock.lock();
+	if( !dbStore.contains(QThread::currentThreadId()) ){
 		db = new QSqlDatabase();
-		storage.setLocalData(db);
-		*db = QSqlDatabase::addDatabase("QMYSQL", QString::number(QThread::currentThreadId()) );
+		*db = QSqlDatabase::addDatabase("QMYSQL", QString::number(QThread::currentThreadId()));
 		db->setHostName(DB::connectionInfo.host);
 		db->setDatabaseName(DB::connectionInfo.dbname);
 		db->setUserName(DB::connectionInfo.user);
 		db->setPassword(DB::connectionInfo.password);
-
+		dbStore.insert(QThread::currentThreadId(), db);
 
 		// make sure the database exists and the credentials are good
 		if( !db->open() ){
-			qCritical() << "Could not open threaded database";
+			qCritical() << "Could not open database";
 			return false;
 		}
 	}
 	else {
-		db = storage.localData();
+		db = dbStore[QThread::currentThreadId()];
 	}
+	dbLock.unlock();
 
 	// prepare queries
 	QSqlQuery testState(*db), addState(*db), addSim(*db), updateSim(*db);
@@ -261,7 +276,7 @@ bool commitSimulation( Simulation* s )
 			{
 				// our work here is done
 				db->rollback();
-				return false;
+				return true;
 			}
 
 			// get the db state's loop id
@@ -330,7 +345,29 @@ bool stateAlreadyRun(State *s)
 		return false;
 	}
 
-	QSqlQuery query(DB::db);
+	QSqlDatabase* db;
+	dbLock.lock();
+	if( !dbStore.contains(QThread::currentThreadId()) ){
+		db = new QSqlDatabase();
+		*db = QSqlDatabase::addDatabase("QMYSQL", QString::number(QThread::currentThreadId()));
+		db->setHostName(DB::connectionInfo.host);
+		db->setDatabaseName(DB::connectionInfo.dbname);
+		db->setUserName(DB::connectionInfo.user);
+		db->setPassword(DB::connectionInfo.password);
+		dbStore.insert(QThread::currentThreadId(), db);
+
+		// make sure the database exists and the credentials are good
+		if( !db->open() ){
+			qCritical() << "Could not open database";
+			return false;
+		}
+	}
+	else {
+		db = dbStore[QThread::currentThreadId()];
+	}
+	dbLock.unlock();
+
+	QSqlQuery query(*db);
 	query.prepare("SELECT COUNT(state_def) AS count FROM states WHERE state_def=:id;");
 	query.bindValue(":id", QVariant(s->pack()) );
 	query.exec();

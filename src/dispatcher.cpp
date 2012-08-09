@@ -18,10 +18,11 @@ Dispatcher::Dispatcher( QMap<QString,QVariant>* options )
 		cnxInfo.user     = info[2];
 		cnxInfo.password = info[3];
 
-		qDebug() << "Connecting to database with " << cnxInfo.toString();
+		std::cout << "Connecting to database with " << cnxInfo.toString().toStdString() << endl;
 		if( ! DB::prepareDatabase(cnxInfo) ){
 			qFatal("Could not verify database!");
 		}
+		else std::cout << "Connected" << endl;
 	}
 
 	if( options->contains("output-dir") ){
@@ -85,10 +86,13 @@ void Dispatcher::startCalculation()
 	}
 	
 	while( !threadpool.waitForDone(1000) )
-		qDebug() << ".";
+		std::cout << ".";
 
 	if( Simulation::abort ){
 		qCritical() << "There was a problem with the simulation! They have been aborted.";
+	}
+	else {
+		std::cout << endl << "Simulations completed successfully." << endl;
 	}
 	emit done();
 	exit(0);
