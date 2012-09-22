@@ -113,15 +113,24 @@ State* State::calcNextState()
 
 	// read
 	case 2:
+		if( following->mem != following->bit[ following->dataPtr ] ){
+			note = "READ!!!";
+		}
+		else note = "READ";
 		following->mem = following->bit[ following->dataPtr ];
+		following->prep = 1;
+		break;
 	case 11:
-		note = varyState==2?"READ":"Product3";
+		note = "Product3";
 		following->prep = 1;
 		break;
 
 	// write
 	case 3: case 7:
-		note = "WRITE";
+		if( following->mem != following->bit[ following->dataPtr ] ){
+			note = "WRITE!!!";
+		}
+		else note = "WRITE";
 		following->bit[following->dataPtr] = following->mem;
 		break;
 
@@ -158,9 +167,13 @@ QString State::toString(QString format)
 	for(int i=-(progPtrOffset); i<NUM_BITS-progPtrOffset; i++){
 		if( i==0 )
 			bits += progsym;
+		else
+			bits += " ";
 		bits += QString::number(bit[(i+NUM_BITS)%NUM_BITS]);
 		if( (i+NUM_BITS)%NUM_BITS == dataPtr )
 			bits += datasym;
+		else
+			bits += " ";
 	}
 
 	return QString(format)

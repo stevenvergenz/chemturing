@@ -90,6 +90,9 @@ void Dispatcher::startCalculation()
 	for( cid=0; cid<runcount; cid++ )
 	{
 		init = genState();
+		if( init == NULL ){
+			break;
+		}
 
 		// only run unique simulations
 		while( DB::stateAlreadyRun(init) ){

@@ -91,7 +91,7 @@ void Simulation::print()
 		f.setFileName(outfile);
 		f.open(QIODevice::WriteOnly);
 		qout.setDevice( &f );
-		qDebug() << "Running " << QString::number( initial->pack(), 16 ).rightJustified(7, '0') << endl;
+		//qDebug() << "Running " << QString::number( initial->pack(), 16 ).rightJustified(7, '0') << endl;
 	}
 	
 	qout << "Step Bits (prog=\\ data=/)    Mode Mem Command" << endl;
